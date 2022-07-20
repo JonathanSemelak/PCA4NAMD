@@ -128,7 +128,6 @@ if (printaverage):
 if (printaverage or printall):
   plt.legend()
   plt.xlabel('time (fs)')
-  # plt.xlim(0, 10000)
   plt.ylabel('Population S1')
   plt.show()
   plt.savefig('S0S1.png')

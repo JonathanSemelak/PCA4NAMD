@@ -15,6 +15,7 @@ natoms = 9
 outputname = 'merged_'+file
 outputnamemull = 'merged_'+filemull
 maxlinestoread = minlen*(natoms+2)
+maxlinestoreadmull = minlen*(natoms+5)
 readall = True
 doalign = True
 usepdb = True
@@ -80,7 +81,7 @@ if (mergemulliken):
       temp=open(path)
       count=0
       for line in temp:
-        if(count<maxlinestoread):
+        if(count<maxlinestoreadmull):
           outputmull.write(line)
           count=count+1
   outputmull.close()

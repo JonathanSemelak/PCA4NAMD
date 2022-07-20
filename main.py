@@ -1,7 +1,8 @@
 from functions import*
 from PCAs import*
 
-PCA_type='Coordinates'
+PCA_type='Mulliken'
+mfile='mulliken'
 rfile='qm.xyz'
 topfile='qm.pdb'
 e0file='E0.dat'
@@ -17,11 +18,11 @@ print('PCA_type: ', PCA_type)
 if (PCA_type=='Coordinates'):
     correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude)
 elif (PCA_type=='Mulliken'):
-    print('PCA_type wrong value')
-elif (PCA_type=='Kernel_Coordinates'):
-    print('PCA_type wrong value')
-elif (PCA_type=='Kernel_Mulliken'):
-    print('PCA_type wrong value')
+    correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,filter)
+# elif (PCA_type=='Kernel_Coordinates'):
+#     print('PCA_type wrong value')
+# elif (PCA_type=='Kernel_Mulliken'):
+#     print('PCA_type wrong value')
 else:
     print('PCA_type wrong value')
     print('Available options are: Coordinates, Mulliken, Kernel_Coordinates, Kernel_Mulliken')

@@ -161,8 +161,31 @@ def write_projection(fname,atomic_numbers,r_av,disp,c_vector,refindex,natoms,nfr
 
 def get_natoms_nframes_mulliken(mfile):
     temp=open(mfile)
+    sum=False
+    natoms=0
+    for line in temp:
+        if 'Total' in line:
+            break
+        if(sum):
+            natoms=natoms+1
+        if 'Atom' in line:
+            sum=True
+    temp.seek(0)
     temp=temp.readlines()
     nlines=len(temp)
-    natoms=int(temp[0])
-    nframes=int(nlines/(natoms+4))
+    nframes=int(nlines/(natoms+5))
     return natoms, nframes
+
+def get_mull(mfile,natoms,nframes):
+    temp=open(mfile)
+    temp=temp.readlines()
+    q=np.zeros((nframes,natoms))
+    for j in range(0,natoms):
+        charge=temp[j+3].split()[2]
+        q[0][j]=float(charge)
+    start=3+natoms+2
+    for i in range(0,nframes-1):
+      for j in range(0,natoms):
+          charge=temp[start+i*(natoms+5)+j+3].split()[2]
+          q[i+1][j]=float(charge)
+    return q
