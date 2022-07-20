@@ -1,5 +1,5 @@
 # PCA4NAMD
-A bunch of python scripts to perform PCA-like methods for non adiabatic molecula dynamics.
+A bunch of python scripts to perform PCA-like methods on non adiabatic molecular dynamics data.
 
 Briefly:
 
