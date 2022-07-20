@@ -158,3 +158,11 @@ def write_projection(fname,atomic_numbers,r_av,disp,c_vector,refindex,natoms,nfr
             f.write(' '+str(z)+'   '+ f'{re1:.8f}' + '       ' + f'{re2:.8f}' + '       ' + f'{re3:.8f}')
             f.write('\n')
             ii=ii+3
+
+def get_natoms_nframes_mulliken(mfile):
+    temp=open(mfile)
+    temp=temp.readlines()
+    nlines=len(temp)
+    natoms=int(temp[0])
+    nframes=int(nlines/(natoms+4))
+    return natoms, nframes

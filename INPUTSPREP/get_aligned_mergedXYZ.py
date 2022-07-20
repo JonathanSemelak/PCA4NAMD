@@ -76,7 +76,7 @@ if (mergemulliken):
   outputmull=open(outputnamemull, 'w')
   for i in range(start,end+1):
     if (i not in exceptions):
-      path=str(i)+'/'+file
+      path=str(i)+'/'+filemull
       temp=open(path)
       count=0
       for line in temp:

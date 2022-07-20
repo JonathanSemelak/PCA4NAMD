@@ -14,7 +14,7 @@ framespertraj=16000
 filter=99
 nframes_animation=100
 amplitude=5
-
+mullikencorr=True
 
 print('Reading coordinates')
 natoms, nframes = get_natoms_nframes(rfile)
@@ -99,7 +99,6 @@ wt=np.zeros(nframes)
 for i in range(0,nframes):
     disp_vector=np.reshape(disp[i], 3*natoms)
     wt[i]=np.dot(c_vector,disp_vector)
-print(wt[nframes-1])
 write_projection('projection-md-energy-diff.xyz',atomic_numbers,r_av,disp,c_vector,0,natoms,nframes,wt)
 
 
