@@ -56,17 +56,6 @@ def correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertra
     arrh_term_av=np.average(arrh_term)
     np.savetxt("arrh_term.dat",arrh_term,fmt='%10.5f')
 
-    #writes P(|enerdiff|)=|enerdiff|*exp(-|enerdiff|/alphakt)/Qenerdiff
-    #where Q_enerdiff=sum[exp(-|enerdiff|/alphakt)]
-    #this is only used to check the parameter alpha adecuacy
-    P_enerdiff=np.zeros(nframes)
-    Q_enerdiff=np.sum(arrh_term)
-    for i in range(0,nframes):
-        P_enerdiff[i]=energy_diff_smoothened[i]*arrh_term[i]
-        print(P_enerdiff[i],energy_diff_smoothened[i],arrh_term[i])
-    P_enerdiff=P_enerdiff/Q_enerdiff
-    np.savetxt('P_enerdiff.dat',P_enerdiff,fmt='%10.5f')
-
     #calculates c, first in an array shape
     c_array=np.zeros((nframes,natoms,3))
     for i in range(0,nframes):
@@ -166,16 +155,22 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     np.savetxt("arrh_term.dat",arrh_term,fmt='%10.5f')
 
     #writes P(|enerdiff|)=|enerdiff|*exp(-|enerdiff|/alphakt)/Qenerdiff
-    #where Q_enerdiff=sum[exp(-|enerdiff|/alphakt)]
+    #for windows of size window_size
+    #where Q_enerdiff=sum[exp(-|enerdiff|/alphakt)] (sum over the frames in the window)
     #this is only used to check the parameter alpha adecuacy
     arrh_term_nosign=np.exp(-abs((energy_diff_smoothened)/(alpha*kt)))
-    Q_enerdiff=np.sum(arrh_term_nosign)
-    P_enerdiff=np.zeros(nframes)
-    for i in range(0,nframes):
-        P_enerdiff[i]=energy_diff_smoothened[i]*arrh_term_nosign[i]
-    P_enerdiff=P_enerdiff/Q_enerdiff
-    P_enerdiff = savgol_filter(P_enerdiff, filter, 3)
-    np.savetxt('P_enerdiff.dat',P_enerdiff)
+    window_size=50
+    nwindows=int(nframes/window_size)
+    P_enerdiff=np.zeros((nwindows,2))
+    Q_enerdiff=np.zeros(nwindows)
+    ediff_times_arr_term_nosing=energy_diff_smoothened*arrh_term
+    for i in range(0,nwindows):
+        start=i*window_size
+        end=start+window_size
+        Q_enerdiff[i]=np.sum(arrh_term_nosign[start:end])
+        P_enerdiff[i][1]=np.average(ediff_times_arr_term_nosing[start:end])/Q_enerdiff[i]
+        P_enerdiff[i][0]=(start+end-1)/2
+    np.savetxt('P_enerdiff.dat',P_enerdiff,fmt='%10.5f')
 
     #calculates c, first in an array shape
     c_array=np.zeros((nframes,natoms))
@@ -203,5 +198,6 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     print('energy_diff_smoothened.dat')
     print('energy_diff_derivative.dat')
     print('arrh_term.dat')
+    print('P_enerdiff.dat')
     print('coordinate_mull.dat')
     print('-------------------------------------------')
