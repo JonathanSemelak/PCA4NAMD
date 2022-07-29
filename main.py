@@ -13,6 +13,7 @@ framespertraj=16000
 filter=99
 nframes_animation=100
 amplitude=5
+#test
 
 print('Analysis_type: ', Analysis_type)
 if (Analysis_type=='Coordinates-PCA-like'):
