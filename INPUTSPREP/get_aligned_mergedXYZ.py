@@ -7,7 +7,7 @@ filemull='mulliken'
 fileout='SMA.out'
 mergemulliken=True
 start=1
-end=100
+end=250
 exceptions=[]
 minlen = 16000
 minminlen = 100
@@ -19,7 +19,7 @@ maxlinestoreadmull = minlen*(natoms+5)
 readall = True
 doalign = True
 usepdb = True
-pdbname = 'qmpdb.pdb'
+pdbname = 'qm.pdb'
 dt=0.0005
 minminlen = 100
 
@@ -28,6 +28,7 @@ for i in range(start,end+1):
     l=0
     path=str(i)+'/'+fileout
     temp=open(path)
+    print('checking convergence on traj ', i)
     for line in temp:
       if line.startswith(' poblacion1'):
         l=l+1

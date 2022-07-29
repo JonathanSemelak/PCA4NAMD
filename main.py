@@ -1,28 +1,29 @@
 from functions import*
-from PCAs import*
+from correlations import*
 
-PCA_type='Mulliken'
+Analysis_type='Coordinates-PCA-like'
 mfile='mulliken'
 rfile='qm.xyz'
 topfile='qm.pdb'
 e0file='E0.dat'
 e1file='E1.dat'
-temperature=100
-alpha=1
+temperature=300
+alpha=100
 framespertraj=16000
 filter=99
 nframes_animation=100
 amplitude=5
 
-print('PCA_type: ', PCA_type)
-if (PCA_type=='Coordinates'):
-    correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude)
-elif (PCA_type=='Mulliken'):
-    correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,filter)
-# elif (PCA_type=='Kernel_Coordinates'):
+print('Analysis_type: ', Analysis_type)
+if (Analysis_type=='Coordinates-PCA-like'):
+    covar_coord_arrh(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude)
+elif (Analysis_type=='Mulliken-PCA-like'):
+    covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter)
+elif (Analysis_type=='Coordinates-KRR'):
+    KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj)
 #     print('PCA_type wrong value')
-# elif (PCA_type=='Kernel_Mulliken'):
+# elif (Analysis_type=='Mulliken-KRR'):
 #     print('PCA_type wrong value')
 else:
-    print('PCA_type wrong value')
-    print('Available options are: Coordinates, Mulliken, Kernel_Coordinates, Kernel_Mulliken')
+    print('Analysis_type wrong value')
+    print('Available options are: Coordinates-PCA-like, Mulliken-PCA-like, Coordinates-KRR, Mulliken-KRR')

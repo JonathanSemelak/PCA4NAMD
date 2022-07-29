@@ -5,7 +5,7 @@ pstofs = 1000
 dt = dt * pstofs
 file='SMA.out'
 start=1
-end=100
+end=250
 # exceptions=[3,25,31,42]
 exceptions=[]
 reasons=[]
@@ -132,10 +132,12 @@ if (printaverage or printall):
   plt.show()
   plt.savefig('S0S1.png')
 
-dataname='test.dat'
 np.savetxt("E0.dat",E0,fmt='%10.5f')
 np.savetxt("E1.dat",E1,fmt='%10.5f')
 
-
+populationS0_av = np.column_stack((x,populationS0_av))
+populationS1_av = np.column_stack((x,populationS1_av))
+np.savetxt("populationS0_av.dat",populationS0_av,fmt='%10.5f')
+np.savetxt("populationS1_av.dat",populationS1_av,fmt='%10.5f')
 
 # data = np.loadtxt(dataname, usecols=[0,1], skiprows =1)

@@ -189,3 +189,34 @@ def get_mull(mfile,natoms,nframes):
           charge=temp[start+i*(natoms+5)+j+3].split()[2]
           q[i+1][j]=float(charge)
     return q
+
+def write_pdb_with_charges(fname,topfile,natoms,names,resids,q):
+    u = md.Universe(topfile,dt=0.0005) #arbitrary dt value for us
+    r=u.trajectory[0]
+    f = open(fname, "w")
+    f.write('CRYST1    0.000    0.000    0.000  90.00  90.00  90.00 P 1           1')
+    f.write('\n')
+    for i in range(0,natoms):
+        newline='ATOM      '+str(i)+'  '+str(names[i])+'       X   '+str(resids[i])+'       '
+        newline=newline+f'{r[i][0]:.3f}' + '  ' + f'{r[i][1]:.3f}' + '  ' + f'{r[i][1]:.3f}'+'  '
+        newline=newline+'  0.00  '+ f'{q[i]:.2f}'+'           '+str(names[i])
+        f.write(newline)
+        f.write('\n')
+
+def get_P_ener_diffs(energy_diff_smoothened,alpha,kt,nframes,window_size):
+    arrh_term_nosign=np.exp(-abs((energy_diff_smoothened)/(alpha*kt)))
+    window_size=50
+    nwindows=int(nframes/window_size)
+    P_enerdiff_by_windows=np.zeros((nwindows,2))
+    Q_enerdiff_by_windows=np.zeros(nwindows)
+    ediff_times_arr_term_nosing=energy_diff_smoothened*arrh_term_nosign
+    for i in range(0,nwindows):
+        start=i*window_size
+        end=start+window_size
+        Q_enerdiff_by_windows[i]=np.sum(arrh_term_nosign[start:end])
+        P_enerdiff_by_windows[i][1]=np.sum(ediff_times_arr_term_nosing[start:end])/Q_enerdiff_by_windows[i]
+        P_enerdiff_by_windows[i][0]=(start+end-1)/2
+    Q_enerdiff=np.sum(arrh_term_nosign)
+    P_enerdiff=arrh_term_nosign/Q_enerdiff
+
+    return P_enerdiff, P_enerdiff_by_windows
