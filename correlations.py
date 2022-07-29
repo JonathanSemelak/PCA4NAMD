@@ -1,10 +1,12 @@
 import numpy as np
 import MDAnalysis as md
 from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.kernel_ridge import KernelRidge
 from scipy.signal import savgol_filter
 from functions import*
+from sklearn.model_selection import train_test_split
 
-def correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude):
+def covar_coord_arrh(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude):
     kB=0.000003173 #kB in hartree
     kt=kB*temperature
     print('Reading coordinates')
@@ -24,12 +26,13 @@ def correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertra
     dmat = get_distance_matrix(r)
     print('Processing')
     energy = flip(energy,framespertraj)
+    energy_diff_raw = energy[:,1]-energy[:,0]
     energy_diff_smoothened = savgol_filter(energy[:,1]-energy[:,0], filter, 3)
     energy_diff_derivative = get_derivative(energy_diff_smoothened)
-
-    np.savetxt("energy_diff_raw.dat",energy[:,1]-energy[:,0],fmt='%10.5f')
+    np.savetxt("energy_diff_raw.dat",energy_diff_raw,fmt='%10.5f')
     np.savetxt("energy_diff_smoothened.dat",energy_diff_smoothened,fmt='%10.5f')
     np.savetxt("energy_diff_derivative.dat",energy_diff_derivative,fmt='%10.5f')
+
 
     print('Calculating averages')
     r_av = np.array([np.mean(r,axis=0)])
@@ -55,6 +58,14 @@ def correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertra
         arrh_term[i]=np.sign(-temp)*np.exp(-abs((temp)/(alpha*kt)))
     arrh_term_av=np.average(arrh_term)
     np.savetxt("arrh_term.dat",arrh_term,fmt='%10.5f')
+
+    #writes P(|enerdiff|)=|enerdiff|*exp(-|enerdiff|/alphakt)/Qenerdiff
+    #for windows of size window_size
+    #where Q_enerdiff=sum[exp(-|enerdiff|/alphakt)] (sum over the frames in the window)
+    #this is only used to check the parameter alpha adecuacy
+    P_enerdiff, P_enerdiff_by_windows = get_P_ener_diffs(energy_diff_smoothened,alpha,kt,nframes,50)
+    np.savetxt('P_enerdiff.dat',P_enerdiff)
+    np.savetxt('P_enerdiff_by_windows.dat',P_enerdiff_by_windows,fmt='%10.5f')
 
     #calculates c, first in an array shape
     c_array=np.zeros((nframes,natoms,3))
@@ -108,11 +119,12 @@ def correlation_coord(rfile,topfile,e0file,e1file,temperature,alpha,framespertra
     print('-------------------------------------------')
 
 
-def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,filter):
+def covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter):
     kB=0.000003173 #kB in hartree
     kt=kB*temperature
     print('Reading coordinates')
     natoms, nframes = get_natoms_nframes_mulliken(mfile)
+    names, resids = get_names_and_resids(topfile,natoms)
     print("natoms:", natoms)
     print("nframes:", nframes)
     print('Loading Mulliken charges evolution')
@@ -123,9 +135,10 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     energy = np.column_stack((e0,e1))
     print('Processing')
     energy = flip(energy,framespertraj)
+    energy_diff_raw = energy[:,1]-energy[:,0]
     energy_diff_smoothened = savgol_filter(energy[:,1]-energy[:,0], filter, 3)
     energy_diff_derivative = get_derivative(energy_diff_smoothened)
-    np.savetxt("energy_diff_raw.dat",energy[:,1]-energy[:,0],fmt='%10.5f')
+    np.savetxt("energy_diff_raw.dat",energy_diff_raw,fmt='%10.5f')
     np.savetxt("energy_diff_smoothened.dat",energy_diff_smoothened,fmt='%10.5f')
     np.savetxt("energy_diff_derivative.dat",energy_diff_derivative,fmt='%10.5f')
 
@@ -143,7 +156,6 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     # dispi = qi-<qi>
     # arrh_termi = sign(-enerdiff)exp(-|enerdiff|/alphakt) - <sign(-enerdiff)exp(-|enerdiff|/alphakt)>
     # i is an mulliken (mulliken) coordinate, not a frame
-
     avgenerdiff=np.average(energy_diff_smoothened) #not used
 
     #calculates arrh_term and <arrh_term> (this is the same for every coordinate of c)
@@ -158,19 +170,9 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     #for windows of size window_size
     #where Q_enerdiff=sum[exp(-|enerdiff|/alphakt)] (sum over the frames in the window)
     #this is only used to check the parameter alpha adecuacy
-    arrh_term_nosign=np.exp(-abs((energy_diff_smoothened)/(alpha*kt)))
-    window_size=50
-    nwindows=int(nframes/window_size)
-    P_enerdiff=np.zeros((nwindows,2))
-    Q_enerdiff=np.zeros(nwindows)
-    ediff_times_arr_term_nosing=energy_diff_smoothened*arrh_term
-    for i in range(0,nwindows):
-        start=i*window_size
-        end=start+window_size
-        Q_enerdiff[i]=np.sum(arrh_term_nosign[start:end])
-        P_enerdiff[i][1]=np.average(ediff_times_arr_term_nosing[start:end])/Q_enerdiff[i]
-        P_enerdiff[i][0]=(start+end-1)/2
-    np.savetxt('P_enerdiff.dat',P_enerdiff,fmt='%10.5f')
+    P_enerdiff, P_enerdiff_by_windows = get_P_ener_diffs(energy_diff_raw,alpha,kt,nframes,50)
+    np.savetxt('P_enerdiff.dat',P_enerdiff)
+    np.savetxt('P_enerdiff_by_windows.dat',P_enerdiff_by_windows,fmt='%10.5f')
 
     #calculates c, first in an array shape
     c_array=np.zeros((nframes,natoms))
@@ -192,6 +194,8 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     c_vector=c_vector/c_vector_norm
     np.savetxt('coordinate_mull.dat',c_vector,fmt='%10.5f')
 
+    write_pdb_with_charges('test.pdb',topfile,natoms,names,resids,c_vector)
+
     print('-------------------------------------------')
     print('The following files have been written:')
     print('energy_diff_raw.dat')
@@ -201,3 +205,56 @@ def correlation_mulliken(mfile,e0file,e1file,temperature,alpha,framespertraj,fil
     print('P_enerdiff.dat')
     print('coordinate_mull.dat')
     print('-------------------------------------------')
+
+
+def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj):
+    print('Reading coordinates')
+    natoms, nframes = get_natoms_nframes(rfile)
+    print("natoms:", natoms)
+    print("nframes:", nframes)
+    names, resids = get_names_and_resids(topfile,natoms)
+    atomic_numbers = get_atomic_numbers(names)
+    print('Loading trajectory')
+    r = get_r_md(topfile,rfile,natoms,nframes)
+    # r = get_r(rfile,natoms,nframes) #this is another way to load the trajectory but without MDAnalysis lib
+    print('Loading Energies evolution')
+    e0 = np.loadtxt(e0file)
+    e1 = np.loadtxt(e1file)
+    energy = np.column_stack((e0,e1))
+    print('Calculating distance matrix')
+    dmat = get_distance_matrix(r)
+    print('Processing')
+    energy = flip(energy,framespertraj)
+    energy_diff_raw = energy[:,1]-energy[:,0]
+    energy_diff_smoothened = savgol_filter(energy[:,1]-energy[:,0], filter, 3)
+    energy_diff_derivative = get_derivative(energy_diff_smoothened)
+
+    np.savetxt("energy_diff_raw.dat",energy_diff_raw,fmt='%10.5f')
+    np.savetxt("energy_diff_smoothened.dat",energy_diff_smoothened,fmt='%10.5f')
+    np.savetxt("energy_diff_derivative.dat",energy_diff_derivative,fmt='%10.5f')
+
+    print('Calculating averages')
+    r_av = np.array([np.mean(r,axis=0)])
+    # r = np.append(r,r_av,axis=0) #average coordinates could be appended as last frame
+
+    print('Evaluating displacement vector (r - <r>)')
+    disp = r[:]- r_av
+
+    disp_vector=np.zeros((nframes,3*natoms))
+    for i in range(0,nframes):
+        jj=0
+        for j in range(0,natoms):
+            disp_vector[i][jj]=disp[i][j][0]
+            disp_vector[i][jj+1]=disp[i][j][1]
+            disp_vector[i][jj+2]=disp[i][j][2]
+            jj=jj+3
+
+    # here disp_vector is X and energy_diff_raw is Y
+    print('Fitting')
+    np.savetxt("disp_vector.dat",disp_vector,fmt='%10.5f')
+    X_train, X_test, y_train, y_test = train_test_split(disp_vector, energy_diff_raw, test_size=0.33, random_state=42)
+    krr = KernelRidge(alpha=1.0,kernel='rbf',gamma=50)
+    krr.fit(X_train, y_train)
+    y_hat=krr.predict(X_test)
+    prediction = np.column_stack((y_test,y_hat))
+    np.savetxt("prediction.dat",prediction,fmt='%10.5f')
