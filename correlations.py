@@ -209,7 +209,8 @@ def covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespert
 
 
 def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,\
-    temperature,alpha,minweight,dofiltered,testsize,kernelalpha,kernelgama,search_best_params):
+    temperature,alpha,minweight,dofiltered,testsize,kernelalpha,kernelgama,\
+    search_best_params,maxsamplesize):
     if (dofiltered):
         print('Reading coordinates')
         natoms, nframes = get_natoms_nframes(rfile)
@@ -229,7 +230,11 @@ def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,\
         remainingframes=np.loadtxt('energy_diff_filtered.dat',usecols=[0])
         remainingframes=remainingframes.astype(int)
         r_filtered = get_r_md(topfile,'qm_filtered.xyz',natoms,efectiveframes)
-
+    if (efectiveframes>maxsamplesize):
+        print('reducing sample size to ', maxsamplesize)
+        r_filtered=r_filtered[:maxsamplesize]
+        energy_diff_filtered=energy_diff_filtered[:maxsamplesize]
+        efectiveframes=maxsamplesize
     print('Calculating averages')
     r_av = np.array([np.mean(r_filtered,axis=0)])
     # r = np.append(r,r_av,axis=0) #average coordinates could be appended as last frame
