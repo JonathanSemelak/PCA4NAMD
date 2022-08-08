@@ -208,7 +208,8 @@ def covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespert
     print('-------------------------------------------')
 
 
-def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,dofiltered,testsize):
+def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,\
+    temperature,alpha,minweight,dofiltered,testsize,kernelalpha,kernelgama,search_best_params):
     if (dofiltered):
         print('Reading coordinates')
         natoms, nframes = get_natoms_nframes(rfile)
@@ -247,19 +248,23 @@ def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha
 
 
     # here disp_vector is X and energy_diff_raw is Y
-    print('Fitting')
+    print('Fitting KRR (rbf)')
     print('Test size is:', testsize)
     np.savetxt("disp_vector.dat",disp_vector,fmt='%10.5f')
     X_train, X_test, y_train, y_test = train_test_split(disp_vector, \
     energy_diff_filtered, test_size=testsize, random_state=42)
-    # krr = KernelRidge(alpha=0.001,kernel='rbf',gamma=2)
-
-    krr = GridSearchCV(
-    KernelRidge(kernel="rbf", gamma=0.1),
-    param_grid={"alpha": [1e0, 0.1, 1e-2, 1e-3], "gamma": np.logspace(-2, 2, 5)},
-    )
-    krr.fit(X_train, y_train)
-    print(f"Best KRR with params: {krr.best_params_} and R2 score: {krr.best_score_:.3f}")
+    if(search_best_params):
+        print('Searching best parameters...')
+        krr = GridSearchCV(
+        KernelRidge(kernel="rbf", gamma=0.1),
+        param_grid={"alpha": [1e0, 0.1, 1e-2, 1e-3], "gamma": np.logspace(-2, 2, 5)},
+        )
+        krr.fit(X_train, y_train)
+        print(f"Best KRR with params: {krr.best_params_} and R2 score: {krr.best_score_:.3f}")
+    else:
+        print('Using specified parameters alpha=',kernelalpha,'and gamma=', kernelgama)
+        krr = KernelRidge(alpha=kernelalpha,kernel='rbf',gamma=kernelgama)
+        krr.fit(X_train, y_train)
     y_hat=krr.predict(X_test)
     prediction = np.column_stack((y_test,y_hat))
     np.savetxt("prediction.dat",prediction,fmt='%10.5f')

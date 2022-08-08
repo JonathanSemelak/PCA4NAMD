@@ -18,6 +18,9 @@ amplitude=5
 minweight=0.9
 dofiltered=False
 testsize=0.33
+kernelalpha=0.001
+kernelgama=2
+search_best_params=True
 
 print('Analysis_type: ', Analysis_type)
 if (Analysis_type=='Coordinates-PCA-like'):
@@ -25,7 +28,8 @@ if (Analysis_type=='Coordinates-PCA-like'):
 elif (Analysis_type=='Mulliken-PCA-like'):
     covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter)
 elif (Analysis_type=='Coordinates-KRR'):
-    KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,dofiltered,testsize)
+    KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,\
+    alpha,minweight,dofiltered,testsize,kernelalpha,kernelgama,search_best_params)
 #     print('PCA_type wrong value')
 # elif (Analysis_type=='Mulliken-KRR'):
 #     print('PCA_type wrong value')
