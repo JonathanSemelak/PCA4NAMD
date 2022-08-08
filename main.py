@@ -1,7 +1,9 @@
 from functions import*
 from correlations import*
+# from KRR import*
 
-Analysis_type='Coordinates-PCA-like'
+#Analysis_type='Coordinates-PCA-like'
+Analysis_type='Coordinates-KRR'
 mfile='mulliken'
 rfile='qm.xyz'
 topfile='qm.pdb'
@@ -13,7 +15,9 @@ framespertraj=16000
 filter=99
 nframes_animation=100
 amplitude=5
-#test
+minweight=0.9
+dofiltered=False
+testsize=0.33
 
 print('Analysis_type: ', Analysis_type)
 if (Analysis_type=='Coordinates-PCA-like'):
@@ -21,7 +25,7 @@ if (Analysis_type=='Coordinates-PCA-like'):
 elif (Analysis_type=='Mulliken-PCA-like'):
     covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter)
 elif (Analysis_type=='Coordinates-KRR'):
-    KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj)
+    KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,dofiltered,testsize)
 #     print('PCA_type wrong value')
 # elif (Analysis_type=='Mulliken-KRR'):
 #     print('PCA_type wrong value')

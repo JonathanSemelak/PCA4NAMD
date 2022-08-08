@@ -1,6 +1,7 @@
 import numpy as np
 import MDAnalysis as md
 from sklearn.metrics.pairwise import euclidean_distances
+from MDAnalysis.coordinates.memory import MemoryReader
 
 def get_atomic_numbers(names):
     dicZ=[("H",1),("He",2),("Li",3),("Be",4),("B",5),("C",6),("N",7),("O",8),("F",9),("Ne",10),("P",15),("S",16),("Fe",26)]
@@ -216,7 +217,58 @@ def get_P_ener_diffs(energy_diff_smoothened,alpha,kt,nframes,window_size):
         Q_enerdiff_by_windows[i]=np.sum(arrh_term_nosign[start:end])
         P_enerdiff_by_windows[i][1]=np.sum(ediff_times_arr_term_nosing[start:end])/Q_enerdiff_by_windows[i]
         P_enerdiff_by_windows[i][0]=(start+end-1)/2
-    Q_enerdiff=np.sum(arrh_term_nosign)
+    # Q_enerdiff=np.sum(arrh_term_nosign)
+    Q_enerdiff=1
     P_enerdiff=arrh_term_nosign/Q_enerdiff
 
     return P_enerdiff, P_enerdiff_by_windows
+
+
+
+def get_data_filtered_by_weight(r,energy_diff_raw,nframes,minweight,temperature,alpha):
+    kB=0.000003173 #kB in hartree
+    kt=kB*temperature
+    PE, temp = get_P_ener_diffs(energy_diff_raw,alpha,kt,nframes,50)
+    PE=PE/(np.max(PE))
+    np.savetxt('PE.dat',PE)
+    framestodelete=[]
+    remainingframes=[]
+    for j in range(0,nframes):
+        if PE[j]<minweight:
+            framestodelete.append(j)
+        else:
+            remainingframes.append(j)
+    # efectiveframes=nframes-len(framestodelete)
+    r_filtered=np.delete(r,framestodelete,0)
+    energy_diff_filtered=np.delete(energy_diff_raw,framestodelete)
+    return r_filtered, energy_diff_filtered, remainingframes
+
+
+def write_xyz_of_selectedframes(topfile,r_filtered,natoms,efectiveframes):
+    u = md.Universe(topfile,r_filtered,in_memory=True,dt=0.0005) #arbitrary dt value for us
+    p = u.select_atoms("all")
+    with md.Writer("qm_filtered.xyz", p.n_atoms) as W:
+      for ts in u.trajectory:
+        W.write(p)
+
+def read_and_filter(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,natoms,nframes):
+    print('Loading trajectory')
+    r = get_r_md(topfile,rfile,natoms,nframes)
+    print('Loading energies evolution')
+    e0 = np.loadtxt(e0file)
+    e1 = np.loadtxt(e1file)
+    print('Processing')
+    energy = np.column_stack((e0,e1))
+    energy = flip(energy,framespertraj)
+    energy_diff_raw = energy[:,1]-energy[:,0]
+    r_filtered,energy_diff_filtered,remainingframes= \
+    get_data_filtered_by_weight(r,energy_diff_raw,nframes,minweight,temperature,alpha)
+    print(np.shape(r_filtered), np.shape(energy_diff_filtered))
+    efectiveframes=len(energy_diff_filtered)
+    print("nframes used for analysis:", efectiveframes, " (",efectiveframes*100/nframes," %)")
+    frames = [ j for j in range(nframes) ]
+    frames = np.array(frames)
+    np.savetxt("energy_diff_raw_withindex.dat",np.column_stack((frames,energy_diff_raw)),fmt='%10.5f')
+    np.savetxt("energy_diff_filtered.dat",np.column_stack((remainingframes,energy_diff_filtered)),fmt='%10.5f')
+    write_xyz_of_selectedframes(topfile,r_filtered,natoms,efectiveframes)
+    return r_filtered,energy_diff_filtered,remainingframes

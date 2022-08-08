@@ -5,6 +5,7 @@ from sklearn.kernel_ridge import KernelRidge
 from scipy.signal import savgol_filter
 from functions import*
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
 
 def covar_coord_arrh(rfile,topfile,e0file,e1file,temperature,alpha,framespertraj,filter,nframes_animation,amplitude):
     kB=0.000003173 #kB in hartree
@@ -207,41 +208,36 @@ def covar_mulliken_arrh(mfile,topfile,e0file,e1file,temperature,alpha,framespert
     print('-------------------------------------------')
 
 
-def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj):
-    print('Reading coordinates')
-    natoms, nframes = get_natoms_nframes(rfile)
-    print("natoms:", natoms)
-    print("nframes:", nframes)
-    names, resids = get_names_and_resids(topfile,natoms)
-    atomic_numbers = get_atomic_numbers(names)
-    print('Loading trajectory')
-    r = get_r_md(topfile,rfile,natoms,nframes)
-    # r = get_r(rfile,natoms,nframes) #this is another way to load the trajectory but without MDAnalysis lib
-    print('Loading Energies evolution')
-    e0 = np.loadtxt(e0file)
-    e1 = np.loadtxt(e1file)
-    energy = np.column_stack((e0,e1))
-    print('Calculating distance matrix')
-    dmat = get_distance_matrix(r)
-    print('Processing')
-    energy = flip(energy,framespertraj)
-    energy_diff_raw = energy[:,1]-energy[:,0]
-    energy_diff_smoothened = savgol_filter(energy[:,1]-energy[:,0], filter, 3)
-    energy_diff_derivative = get_derivative(energy_diff_smoothened)
-
-    np.savetxt("energy_diff_raw.dat",energy_diff_raw,fmt='%10.5f')
-    np.savetxt("energy_diff_smoothened.dat",energy_diff_smoothened,fmt='%10.5f')
-    np.savetxt("energy_diff_derivative.dat",energy_diff_derivative,fmt='%10.5f')
+def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,dofiltered,testsize):
+    if (dofiltered):
+        print('Reading coordinates')
+        natoms, nframes = get_natoms_nframes(rfile)
+        print("natoms:", natoms)
+        print("nframes:", nframes)
+        print("Filtering...")
+        r_filtered,energy_diff_filtered,remainingframes= \
+        read_and_filter(rfile,topfile,e0file,e1file,filter,framespertraj,temperature,alpha,minweight,natoms,nframes)
+        efectiveframes = len(remainingframes)
+        print("efectiveframes:", efectiveframes)
+    else:
+        print("Reading filtered files")
+        natoms, efectiveframes = get_natoms_nframes('qm_filtered.xyz')
+        print("natoms:", natoms)
+        print("efectiveframes:", efectiveframes)
+        energy_diff_filtered=np.loadtxt('energy_diff_filtered.dat',usecols=[1])
+        remainingframes=np.loadtxt('energy_diff_filtered.dat',usecols=[0])
+        remainingframes=remainingframes.astype(int)
+        r_filtered = get_r_md(topfile,'qm_filtered.xyz',natoms,efectiveframes)
 
     print('Calculating averages')
-    r_av = np.array([np.mean(r,axis=0)])
+    r_av = np.array([np.mean(r_filtered,axis=0)])
     # r = np.append(r,r_av,axis=0) #average coordinates could be appended as last frame
 
     print('Evaluating displacement vector (r - <r>)')
-    disp = r[:]- r_av
+    disp = r_filtered[:]- r_av
+    disp_vector=np.zeros((efectiveframes,3*natoms))
 
-    disp_vector=np.zeros((nframes,3*natoms))
-    for i in range(0,nframes):
+    for i in range(0,efectiveframes):
         jj=0
         for j in range(0,natoms):
             disp_vector[i][jj]=disp[i][j][0]
@@ -249,12 +245,21 @@ def KRR_coord(rfile,topfile,e0file,e1file,filter,framespertraj):
             disp_vector[i][jj+2]=disp[i][j][2]
             jj=jj+3
 
+
     # here disp_vector is X and energy_diff_raw is Y
     print('Fitting')
+    print('Test size is:', testsize)
     np.savetxt("disp_vector.dat",disp_vector,fmt='%10.5f')
-    X_train, X_test, y_train, y_test = train_test_split(disp_vector, energy_diff_raw, test_size=0.33, random_state=42)
-    krr = KernelRidge(alpha=1.0,kernel='rbf',gamma=50)
+    X_train, X_test, y_train, y_test = train_test_split(disp_vector, \
+    energy_diff_filtered, test_size=testsize, random_state=42)
+    # krr = KernelRidge(alpha=0.001,kernel='rbf',gamma=2)
+
+    krr = GridSearchCV(
+    KernelRidge(kernel="rbf", gamma=0.1),
+    param_grid={"alpha": [1e0, 0.1, 1e-2, 1e-3], "gamma": np.logspace(-2, 2, 5)},
+    )
     krr.fit(X_train, y_train)
+    print(f"Best KRR with params: {krr.best_params_} and R2 score: {krr.best_score_:.3f}")
     y_hat=krr.predict(X_test)
     prediction = np.column_stack((y_test,y_hat))
     np.savetxt("prediction.dat",prediction,fmt='%10.5f')

@@ -1,13 +1,14 @@
 import numpy as np
 import MDAnalysis as md
 from MDAnalysis.analysis import align
+import sys
 
 file='qm.xyz'
 filemull='mulliken'
 fileout='SMA.out'
 mergemulliken=True
 start=1
-end=250
+end=249
 exceptions=[]
 minlen = 16000
 minminlen = 100
@@ -41,6 +42,33 @@ for i in range(start,end+1):
         if 'No convergence' in line:
           exceptions.append(i)
           break
+      temp.seek(0)
+
+for i in range(start,end+1):
+    if (i not in exceptions):
+      path=str(i)+'/'+file
+      temp=open(path)
+      foundE0=0
+      foundE1=0
+      foundp1=0
+      foundp2=0
+      count=0
+      for line in temp:
+        if(count<minlen):
+          if 'Final energy' in line:
+            foundE0=foundE0+1
+          if line.startswith(' STATE 1      ENERGY='):
+            foundE1=foundE1+1
+          if line.startswith(' poblacion1'):
+            foundp1=foundp1+1
+          if line.startswith(' poblacion2'):
+            foundp2=foundp2+1
+            count=count+1 #because this appears last
+          if (not ((foundE0 == foundE1) and (foundE1 == foundp1) and (foundp1 == foundp2))):
+            print('Something went wrong when reading traj ',i)
+            print('An energy value or population is missing.')
+            print('Stopping program...')
+            sys.exit()
       temp.seek(0)
 
 print("Total exceptions:", len(exceptions))
