@@ -1,0 +1,21 @@
+This data set was filtered using:
+minweight=0.7
+temperature=300
+alpha=100
+
+To analyse them with KRR make sure to set in main.py:
+
+Analysis_type='Coordinates-KRR'
+dofiltered=False #because we want to use the already filtered files  
+
+Parameters that have to be specified and some suggestions:
+
+testsize=0.33
+kernelalpha=0.001
+kernelgama=1
+search_best_params=False #if set to true, kernelalpha and kernelgama will be optimized (it will take some minutes though)
+maxsamplesize=20000 #otherwise the array allocated by KRR is too large and does not fit in the RAM mem
+
+Finally, just run:
+
+python ../main.py
