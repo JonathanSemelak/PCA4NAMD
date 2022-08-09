@@ -3,7 +3,7 @@ minweight=0.7
 temperature=300
 alpha=100
 
-To analyse them with KRR make sure to set in main.py:
+To analyse it with KRR make sure to set in main.py:
 
 Analysis_type='Coordinates-KRR'
 dofiltered=False #because we want to use the already filtered files  
